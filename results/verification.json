@@ -1,0 +1,76 @@
+{
+  "config": "min=2048 avg~16384 max=65536 bits=14 normalised=False",
+  "payload_bytes": 4194304,
+  "sections": {
+    "round_trip": {
+      "chunks": 220,
+      "identical": true,
+      "mean_chunk_bytes": 19065
+    },
+    "identical_file": {
+      "new_chunks": 0,
+      "dedupe_ratio": 1.0
+    },
+    "single_byte_edit": {
+      "new_chunks": 1,
+      "total_chunks": 220,
+      "dedupe_ratio": 0.997193
+    },
+    "prepend_one_byte": {
+      "new_chunks": 1,
+      "total_chunks": 220,
+      "dedupe_ratio": 0.999112,
+      "fixed_size_chunks_all_new": 2049
+    },
+    "self_dedupe": {
+      "bytes": 40000,
+      "total_chunks": 10,
+      "new_chunks": 2,
+      "dedupe_ratio": 0.8192,
+      "identical": true,
+      "config": "min=4096 avg~1 max=4096 bits=0 normalised=False"
+    },
+    "resume": {
+      "interrupted_after_chunks": 10,
+      "journal_left_behind": true,
+      "resumed": true,
+      "skipped_chunks": 10,
+      "identical": true
+    },
+    "refused_resume": {
+      "refused": true,
+      "reason": "'target.bin' chunk 0 is 3724 bytes / 82fa208da244 but the journal recorded 3724 / 7fc4f04b211a; the source changed mid-ingest",
+      "manifest_written": false
+    },
+    "corruption": {
+      "manifests_reporting_problem": 3,
+      "manifests_sharing_the_chunk": 3,
+      "restore_refused": true,
+      "healthy_after_repair": true
+    },
+    "garbage_collection": {
+      "objects_before": 2,
+      "objects_after": 1,
+      "deleted": 1,
+      "reclaimed_bytes": 34,
+      "referenced_file_survives": true
+    },
+    "throughput": {
+      "bytes": 2097152,
+      "seconds": 4.725,
+      "mib_per_second": 0.42,
+      "chunks": 108
+    }
+  },
+  "totals": {
+    "manifests": 4,
+    "logical_bytes": 16777217,
+    "referenced_bytes": 4209802,
+    "stored_objects": 222,
+    "unique_bytes": 4209802,
+    "shared_chunks": 220,
+    "saved_bytes": 12567415,
+    "dedupe_ratio": 0.7490762621714913,
+    "config": "min=2048 avg~16384 max=65536 bits=14 normalised=False"
+  }
+}

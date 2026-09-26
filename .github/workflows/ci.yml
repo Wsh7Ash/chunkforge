@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The library claims 3.9+; test the floor and the current releases.
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # The library and its tests are standard library only, so there is nothing
+      # to install. A cache is still worth it: the suite is dominated by the
+      # chunker's per-byte loop, not by imports.
+      - name: Cache bytecode
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/python
+          key: py-${{ matrix.python-version }}-${{ hashFiles('**/*.py') }}
+          restore-keys: py-${{ matrix.python-version }}-
+
+      - name: Byte-compile every module
+        run: python -m compileall -q src tests demo.py run_tests.py
+
+      - name: Run the test suite
+        run: python run_tests.py -v
+
+      - name: Check the CLI is importable and its help works
+        run: |
+          export PYTHONPATH=src
+          python -m chunkforge --version
+          python -m chunkforge --help
+
+      - name: Confirm the documented public API exists
+        run: |
+          export PYTHONPATH=src
+          python - <<'PY'
+          import chunkforge
+          missing = [n for n in chunkforge.__all__ if not hasattr(chunkforge, n)]
+          assert not missing, f"missing from chunkforge.__all__: {missing}"
+          print(f"{len(chunkforge.__all__)} public names, version {chunkforge.__version__}")
+          PY
+
+  demo:
+    name: demo (quick)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Proves the demo runs, that every claim it makes actually holds, and
+      # that the published results/ are still reproducible from the code.
+      - name: Run the demo
+        run: python demo.py --quick --results "$RUNNER_TEMP/results"
+
+      - name: Check the demo's claims
+        run: |
+          python - "$RUNNER_TEMP/results/verification.json" <<'PY'
+          import json, sys
+          report = json.load(open(sys.argv[1]))
+          s = report["sections"]
+
+          assert s["round_trip"]["identical"], "round trip did not reproduce the file"
+          assert s["identical_file"]["dedupe_ratio"] == 1.0, "an identical file did not dedupe"
+          assert s["single_byte_edit"]["dedupe_ratio"] > 0.9, "a one-byte edit deduplicated poorly"
+          assert s["prepend_one_byte"]["dedupe_ratio"] > 0.9, "a one-byte prepend deduplicated poorly"
+          assert s["prepend_one_byte"]["fixed_size_chunks_all_new"] > 1, "the fixed-size contrast is missing"
+          assert s["resume"]["identical"] and s["resume"]["resumed"], "resume did not work"
+          assert s["refused_resume"]["refused"], "a changed source was not refused"
+          assert not s["refused_resume"]["manifest_written"], "a refused resume wrote a manifest"
+          assert s["corruption"]["restore_refused"], "corruption was not detected"
+          assert s["corruption"]["healthy_after_repair"], "the archive did not recover"
+          assert s["garbage_collection"]["referenced_file_survives"], "gc deleted live data"
+
+          print("every claim in the demo holds")
+          PY
+
+  packaging:
+    name: package builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build the sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Check pyproject metadata is valid
+        run: python -m pip install --upgrade pip twine && twine check dist/*
+
+      - name: Install the wheel and use it from a clean environment
+        run: |
+          python -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          python - <<'PY'
+          import chunkforge
+          assert chunkforge.__version__ == "1.0.0", chunkforge.__version__
+
+          forge = chunkforge.ChunkForge("archive")
+          data = bytes(range(256)) * 200
+          forge.add(data, name="smoke")
+          forge.restore("smoke", "smoke.out")
+          assert open("smoke.out", "rb").read() == data, "installed package failed a round trip"
+          assert forge.verify() == [], forge.verify()
+          print("installed wheel round-trips correctly")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

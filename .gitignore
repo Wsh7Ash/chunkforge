@@ -1,0 +1,38 @@
+# byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.so
+
+# packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# virtualenvs
+.venv/
+venv/
+env/
+
+# test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# chunkforge working directories
+chunkforge-archive/
+.demo-work/
+.demo-work-*/
+
+# archives made by the demo or the tests
+*.cfarchive/
+
+# editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

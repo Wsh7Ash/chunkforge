@@ -1,0 +1,17 @@
+# Normalise line endings in the repository itself.
+#
+# The project is developed on Windows and tested on Linux. Without this, git's
+# autocrlf would store LF but check out CRLF on Windows, and text files in the
+# repository would differ by platform -- including results/, which is meant to
+# be reproducible byte for byte.
+* text=auto eol=lf
+
+# Anything git should treat as binary stays binary.
+*.png binary
+*.jpg binary
+*.gz binary
+*.whl binary
+
+# Keep these out of language statistics and diffs.
+docs/*.md linguist-documentation
+results/* linguist-generated
